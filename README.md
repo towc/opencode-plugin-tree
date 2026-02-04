@@ -49,8 +49,29 @@ Then restart OpenCode.
 ## Requirements
 
 - OpenCode 1.0+
-- tmux
-- Running OpenCode inside a tmux session
+- Bun (comes with OpenCode)
+- tmux (for tmux mode) or a terminal emulator (for terminal mode)
+
+## Quick Start: Playground
+
+Try the plugin immediately with built-in examples:
+
+```bash
+# Bug fixing example
+npx opencode-plugin-tree playground bug-fix
+
+# Build an app from scratch
+npx opencode-plugin-tree playground build-app
+
+# Code refactoring challenge
+npx opencode-plugin-tree playground refactor-code
+```
+
+Each playground example:
+- Copies to `/tmp/ocp-tree/<example>`
+- Opens in a new tmux window (if in tmux)
+- Pre-fills an OpenCode prompt for you
+- Press Enter to start!
 
 ## Usage
 
@@ -59,7 +80,7 @@ Then restart OpenCode.
 From within OpenCode:
 
 ```
-spawn-agent agent_type="web" task_description="Build login page component"
+tree-spawn-child agent_type="web" task_description="Build login page component"
 ```
 
 This will:
@@ -71,7 +92,7 @@ This will:
 ### Viewing the Session Tree
 
 ```
-show-tree
+tree-show
 ```
 
 Output example:
@@ -91,18 +112,18 @@ Icons:
 ### Listing Available Agents
 
 ```
-list-agents
+tree-list-agents
 ```
 
 Or from command line:
 ```bash
-npx opencode-plugin-tree list-agents
+npx opencode-plugin-tree tree-list-agents
 ```
 
 ### Killing Sessions
 
 ```
-kill-session session_name="web-agent" kill_children=false
+tree-truncate-children session_name="web-agent" kill_children=false
 ```
 
 ### Viewing Tree from CLI
@@ -217,7 +238,7 @@ This plugin implements a multi-agent workflow pattern:
 
 **Root Session:**
 ```
-spawn-agent agent_type="web" task_description="
+tree-spawn-child agent_type="web" task_description="
 1. Create login component
 2. Add form validation
 3. Integrate with API
@@ -247,9 +268,14 @@ npx opencode-plugin-tree install          # Add to OpenCode config
 npx opencode-plugin-tree uninstall        # Remove from config
 npx opencode-plugin-tree uninstall --full # Remove config + data
 
+# Playground
+npx opencode-plugin-tree playground bug-fix   # Try bug fixing example
+npx opencode-plugin-tree playground build-app # Try building an app
+npx opencode-plugin-tree playground refactor-code # Try code refactoring
+
 # Session Management
 npx opencode-plugin-tree tree             # Show session tree
-npx opencode-plugin-tree list-agents      # List agent types
+npx opencode-plugin-tree tree-list-agents      # List agent types
 
 # Configuration
 npx opencode-plugin-tree config           # Edit config file
@@ -260,10 +286,31 @@ npx opencode-plugin-tree help             # Show help
 
 When the plugin is installed, these tools are available in OpenCode:
 
-- **spawn-agent** - Spawn a new agent session
-- **show-tree** - Show session tree visualization
-- **kill-session** - Kill a session and optionally its children
-- **list-agents** - List available agent types
+### Session Management
+- **tree-spawn-child** - Spawn a new child agent session
+  - `agent_type`: web, pipeline, db, research, test, general
+  - `task_description`: What the agent should do
+  - `working_dir`: (optional) Override default directory
+
+- **tree-show** - Show session tree visualization with status icons
+  - 🟢 Active, 🟡 Idle, ⚪ Completed/killed
+
+- **tree-truncate-children** - Kill a session and optionally its children
+  - `session_name`: Window/session name to kill  
+  - `kill_children`: (optional) Also kill child sessions
+
+- **tree-list-agents** - List available agent types
+
+### Parent-Child Communication
+- **tree-focus-parent** - Switch tmux focus back to parent window
+  - Respects `interaction.auto_focus_parent` config setting
+  - Useful after completing child work
+
+- **tree-report-parent** - Create report and notify parent
+  - `report_content`: Markdown content of the report
+  - `report_name`: Filename (without .md extension)
+  - Saves to configured reports directory
+  - Notifies parent via tmux message, file, or both
 
 ## Advanced Usage
 
@@ -294,15 +341,15 @@ Each agent type has a default working directory (configurable in `tree.yml`):
 
 Override with:
 ```
-spawn-agent agent_type="web" task_description="..." working_dir="/custom/path"
+tree-spawn-child agent_type="web" task_description="..." working_dir="/custom/path"
 ```
 
 ### Session Lifecycle
 
-1. **Created** - `spawn-agent` creates tmux window and session node
+1. **Created** - `tree-spawn-child` creates tmux window and session node
 2. **Active** - Agent is working (status: "active")
 3. **Idle** - Agent completes work (status: "idle")
-4. **Killed** - Window closed manually or via `kill-session` (status: "killed")
+4. **Killed** - Window closed manually or via `tree-truncate-children` (status: "killed")
 
 ### Event Tracking
 
@@ -343,11 +390,11 @@ op  # Start OpenCode
 
 ### Sessions not tracked
 
-The plugin tracks sessions when spawned via `spawn-agent`. Manual tmux windows aren't tracked automatically.
+The plugin tracks sessions when spawned via `tree-spawn-child`. Manual tmux windows aren't tracked automatically.
 
 ### Tree visualization empty
 
-Run `show-tree` from within OpenCode (not from command line). The CLI `tree` command shows the saved state.
+Run `tree-show` from within OpenCode (not from command line). The CLI `tree` command shows the saved state.
 
 ## Examples
 
@@ -355,8 +402,8 @@ Run `show-tree` from within OpenCode (not from command line). The CLI `tree` com
 
 **Root Session:**
 ```
-spawn-agent agent_type="web" task_description="Build user dashboard"
-spawn-agent agent_type="pipeline" task_description="Create data processing pipeline"
+tree-spawn-child agent_type="web" task_description="Build user dashboard"
+tree-spawn-child agent_type="pipeline" task_description="Create data processing pipeline"
 ```
 
 Both agents work in parallel, each in their own tmux window.
@@ -365,12 +412,12 @@ Both agents work in parallel, each in their own tmux window.
 
 **Root Session:**
 ```
-spawn-agent agent_type="db" task_description="Run database migrations"
+tree-spawn-child agent_type="db" task_description="Run database migrations"
 ```
 
 **Wait for completion, then:**
 ```
-spawn-agent agent_type="web" task_description="Test new database schema in UI"
+tree-spawn-child agent_type="web" task_description="Test new database schema in UI"
 ```
 
 ### Example 3: Deep Nesting
@@ -388,7 +435,7 @@ Both plugins follow the same design pattern:
 | Configuration | TOML | YAML |
 | Purpose | Sound notifications | Session management |
 | External resources | Audio files | Tmux sessions |
-| CLI commands | install, browse, test | install, tree, list-agents |
+| CLI commands | install, browse, test | install, tree, tree-list-agents |
 | Hot reload | ✅ | ✅ |
 | State tracking | Cache files | Session tree JSON |
 

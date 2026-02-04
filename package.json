@@ -15,19 +15,21 @@
     "agent-coordination"
   ],
   "scripts": {
-    "install-plugin": "node cli/install",
-    "browse": "node cli/browse",
-    "tree": "node cli/tree"
+    "install-plugin": "bun cli/install.ts",
+    "tree": "bun cli/tree.ts",
+    "playground": "bun cli/playground.ts"
   },
   "bin": {
-    "opencode-plugin-tree": "cli/main"
+    "opencode-plugin-tree": "cli/main.ts"
   },
   "dependencies": {
     "@opencode-ai/plugin": "^1.0.0",
     "js-yaml": "^4.1.0"
   },
   "devDependencies": {
-    "@types/node": "^20.0.0"
+    "@types/node": "^20.0.0",
+    "@types/bun": "^1.0.0",
+    "bun-types": "^1.0.0"
   },
   "peerDependencies": {
     "opencode": "^1.0.0"

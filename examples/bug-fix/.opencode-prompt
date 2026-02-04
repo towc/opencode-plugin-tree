@@ -1,0 +1,5 @@
+Fix the bugs in app.js. There are two issues:
+1. Division by zero is not handled
+2. Unknown operations should throw an error
+
+Make sure to test your changes!

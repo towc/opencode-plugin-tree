@@ -1,7 +1,11 @@
 # OpenCode Tree Plugin Configuration
 # Manages tmux session trees with parent-child relationships
 
-# Tmux configuration
+# Spawn mode: "tmux" or "terminal"
+# Auto-detected on install (tmux if in TMUX, terminal otherwise)
+spawn_mode: "tmux"
+
+# Tmux configuration (only used if spawn_mode is "tmux")
 tmux:
   # Default session name for root
   root_session: "opencode-root"
@@ -12,6 +16,15 @@ tmux:
   
   # Window naming pattern
   window_pattern: "{agent}-agent"
+
+# Terminal configuration (only used if spawn_mode is "terminal")
+terminal:
+  # Terminal command to spawn new terminal
+  # Available: "gnome-terminal", "xterm", "kitty", "alacritty", "wezterm"
+  command: "gnome-terminal"
+  
+  # Arguments for terminal command
+  args: "--working-directory={working_dir} -- {shell_command}"
 
 # Agent types and their default configurations
 agents:
@@ -125,6 +138,18 @@ templates:
     - Work within existing plan from docs/daily/{DATE}.md
     - Check docs/active-sessions.md to avoid duplicate work
     - Update progress in real-time
+
+# Parent-child interaction
+interaction:
+  # Auto-focus parent window after child reports completion
+  auto_focus_parent: false  # Can be annoying, disabled by default
+  
+  # How to notify parent about child reports
+  # Options: "file", "tmux-message", "both", "none"
+  notify_method: "tmux-message"
+  
+  # Directory to store child reports (relative to working dir)
+  reports_dir: "docs/reports"
 
 # CLI behavior
 cli:

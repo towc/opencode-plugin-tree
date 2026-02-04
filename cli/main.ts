@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 
 const command = process.argv[2]
 
@@ -12,6 +12,7 @@ Usage:
 Commands:
   install          Add plugin to OpenCode config
   uninstall        Remove plugin from OpenCode config
+  playground       Try examples (bug-fix, build-app, refactor-code)
   tree             Show current session tree
   spawn <agent>    Spawn a new agent session
   list-agents      List available agent types
@@ -43,6 +44,9 @@ switch (command) {
     break
   case "uninstall":
     import("./uninstall").catch(console.error)
+    break
+  case "playground":
+    import("./playground").catch(console.error)
     break
   case "tree":
     import("./tree").catch(console.error)

@@ -1,14 +1,26 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 
-import { readFile, writeFile } from "fs/promises"
+import { readFile, writeFile, mkdir, cp } from "fs/promises"
 import { existsSync } from "fs"
 import { homedir } from "os"
-import { join } from "path"
+import { join, dirname } from "path"
+import { fileURLToPath } from "url"
+import yaml from "js-yaml"
 
 const CONFIG_PATH = join(homedir(), ".config", "opencode", "opencode.json")
+const PLUGIN_CONFIG_DIR = join(homedir(), ".config", "opencode", "plugins", "tree")
+const PLUGIN_CONFIG_PATH = join(PLUGIN_CONFIG_DIR, "tree.yml")
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
+const DEFAULT_CONFIG_PATH = join(__dirname, "..", "tree.default.yml")
 
 async function install() {
   console.log("📦 Installing opencode-plugin-tree...")
+  
+  // Detect if in tmux
+  const inTmux = !!process.env.TMUX
+  console.log(inTmux ? "✓ Detected tmux environment" : "⚠ Not in tmux, will use terminal spawn mode")
 
   // Check if config file exists
   if (!existsSync(CONFIG_PATH)) {
@@ -48,12 +60,27 @@ async function install() {
     await writeFile(CONFIG_PATH, JSON.stringify(config, null, 2))
 
     console.log("✅ Plugin added to OpenCode config!")
+    
+    // Create plugin config directory
+    await mkdir(PLUGIN_CONFIG_DIR, { recursive: true })
+    
+    // Create/update plugin configuration with detected spawn mode
+    if (!existsSync(PLUGIN_CONFIG_PATH)) {
+      // Load default config and update spawn_mode
+      const defaultConfig = yaml.load(await readFile(DEFAULT_CONFIG_PATH, "utf-8")) as any
+      defaultConfig.spawn_mode = inTmux ? "tmux" : "terminal"
+      
+      await writeFile(PLUGIN_CONFIG_PATH, yaml.dump(defaultConfig))
+      console.log(`✅ Created config with spawn_mode: ${defaultConfig.spawn_mode}`)
+    }
+    
     console.log("\nNext steps:")
     console.log("  1. Restart OpenCode: Ctrl+C then restart")
-    console.log("  2. In OpenCode, use: spawn-agent agent_type=\"web\" task_description=\"Your task\"")
-    console.log("  3. View tree: show-tree")
+    console.log("  2. Try playground: npx opencode-plugin-tree playground bug-fix")
+    console.log("  3. In OpenCode, use: tree-spawn-child agent_type=\"web\" task_description=\"Your task\"")
+    console.log("  4. View tree: tree-show")
     console.log("\nConfiguration file: ~/.config/opencode/plugins/tree/tree.yml")
-  } catch (error) {
+  } catch (error: any) {
     console.error("❌ Failed to install plugin:", error.message)
     process.exit(1)
   }

@@ -23,10 +23,15 @@ interface AgentConfig {
 }
 
 interface TreeConfig {
+  spawn_mode: "tmux" | "terminal"
   tmux: {
     root_session: string
     child_pattern: string
     window_pattern: string
+  }
+  terminal: {
+    command: string
+    args: string[]
   }
   agents: Record<string, AgentConfig>
   tracking: {
@@ -34,6 +39,11 @@ interface TreeConfig {
     active_sessions_file: string
     auto_update: boolean
     metadata: string[]
+  }
+  interaction: {
+    auto_focus_parent: boolean
+    notify_method: "tmux-message" | "file" | "both" | "none"
+    reports_dir: string
   }
   events: Record<string, any>
   cleanup: {
@@ -168,6 +178,32 @@ export const TreePlugin: Plugin = async ({ client }) => {
     return !!process.env.TMUX
   }
 
+  // Create a new terminal window
+  const createTerminalWindow = async (
+    windowName: string,
+    workingDir: string,
+    command?: string
+  ): Promise<boolean> => {
+    try {
+      const terminalCmd = config.terminal.command
+      const args = config.terminal.args
+        .map(arg => arg
+          .replace("{name}", windowName)
+          .replace("{dir}", workingDir)
+          .replace("{command}", command || "")
+        )
+        .join(" ")
+      
+      const fullCmd = `${terminalCmd} ${args}`
+      execSync(fullCmd, { detached: true })
+      
+      return true
+    } catch (error) {
+      await log("Failed to create terminal window", { error: String(error) })
+      return false
+    }
+  }
+
   // Create a new tmux window
   const createTmuxWindow = async (
     windowName: string,
@@ -220,15 +256,15 @@ export const TreePlugin: Plugin = async ({ client }) => {
     taskDescription: string,
     workingDir?: string
   ): Promise<{ success: boolean; sessionId?: string; message: string }> => {
-    if (!isInTmux()) {
-      return {
-        success: false,
-        message: "Not running in tmux. This plugin requires tmux."
-      }
-    }
-
     // Reload config
     config = await loadConfig()
+    
+    if (config.spawn_mode === "tmux" && !isInTmux()) {
+      return {
+        success: false,
+        message: "Not running in tmux. This plugin requires tmux when spawn_mode is 'tmux'."
+      }
+    }
 
     // Check if agent type exists
     if (!config.agents[agentType]) {
@@ -272,12 +308,18 @@ export const TreePlugin: Plugin = async ({ client }) => {
     })
 
     const command = `op "${prompt}"`
-    const success = await createTmuxWindow(windowName, dir, command)
+    let success = false
+    
+    if (config.spawn_mode === "tmux") {
+      success = await createTmuxWindow(windowName, dir, command)
+    } else {
+      success = await createTerminalWindow(windowName, dir, command)
+    }
 
     if (!success) {
       return {
         success: false,
-        message: "Failed to create tmux window"
+        message: `Failed to create ${config.spawn_mode} window`
       }
     }
 
@@ -364,6 +406,127 @@ export const TreePlugin: Plugin = async ({ client }) => {
     return lines.join("\n")
   }
 
+  // Focus parent window in tmux
+  const focusParent = async (): Promise<{ success: boolean; message: string }> => {
+    if (!isInTmux()) {
+      return {
+        success: false,
+        message: "Not running in tmux"
+      }
+    }
+
+    // Check if auto_focus_parent is enabled
+    if (!config.interaction.auto_focus_parent) {
+      return {
+        success: false,
+        message: "auto_focus_parent is disabled in config"
+      }
+    }
+
+    const tree = await loadTree()
+    const currentWindow = getCurrentTmuxWindow()
+    const currentNode = Object.values(tree.nodes).find(n => n.tmux_window === currentWindow)
+
+    if (!currentNode || !currentNode.parent) {
+      return {
+        success: false,
+        message: "No parent window found"
+      }
+    }
+
+    const parentNode = tree.nodes[currentNode.parent]
+    if (!parentNode || !parentNode.tmux_window) {
+      return {
+        success: false,
+        message: "Parent window not found in tree"
+      }
+    }
+
+    try {
+      execSync(`tmux select-window -t "${parentNode.tmux_window}"`)
+      return {
+        success: true,
+        message: `Switched to parent window: ${parentNode.tmux_window}`
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: `Failed to switch to parent: ${String(error)}`
+      }
+    }
+  }
+
+  // Create report and notify parent
+  const reportToParent = async (
+    reportContent: string,
+    reportName: string
+  ): Promise<{ success: boolean; message: string; parentWindow?: string }> => {
+    const tree = await loadTree()
+    const currentWindow = getCurrentTmuxWindow()
+    const currentNode = Object.values(tree.nodes).find(n => n.tmux_window === currentWindow)
+
+    if (!currentNode || !currentNode.parent) {
+      return {
+        success: false,
+        message: "No parent window found"
+      }
+    }
+
+    const parentNode = tree.nodes[currentNode.parent]
+    if (!parentNode) {
+      return {
+        success: false,
+        message: "Parent node not found in tree"
+      }
+    }
+
+    // Determine working directory
+    const workingDir = currentNode.working_dir || getCurrentWorkingDir()
+    const reportsDir = join(workingDir, config.interaction.reports_dir)
+    
+    // Create reports directory
+    await mkdir(reportsDir, { recursive: true })
+
+    // Write report file
+    const reportPath = join(reportsDir, `${reportName}.md`)
+    await writeFile(reportPath, reportContent)
+
+    // Notify parent based on config
+    const notifyMethod = config.interaction.notify_method
+    const notificationMessage = `Report ready: ${reportName} (from ${currentNode.name})`
+
+    if (notifyMethod === "tmux-message" || notifyMethod === "both") {
+      if (parentNode.tmux_window) {
+        try {
+          execSync(`tmux display-message -t "${parentNode.tmux_window}" "${notificationMessage}"`)
+        } catch (error) {
+          await log("Failed to send tmux message", { error: String(error) })
+        }
+      }
+    }
+
+    if (notifyMethod === "file" || notifyMethod === "both") {
+      const notificationsFile = join(parentNode.working_dir, ".notifications")
+      const timestamp = new Date().toISOString()
+      const notification = `[${timestamp}] ${notificationMessage}\n`
+      
+      try {
+        const existingContent = existsSync(notificationsFile) 
+          ? await readFile(notificationsFile, "utf-8")
+          : ""
+        await writeFile(notificationsFile, existingContent + notification)
+      } catch (error) {
+        await log("Failed to write notification file", { error: String(error) })
+      }
+    }
+
+    return {
+      success: true,
+      message: `Report created at: ${reportPath}\nNotified parent: ${parentNode.tmux_window || parentNode.name}`,
+      parentWindow: parentNode.tmux_window || parentNode.name
+    }
+  }
+
   // Initialize plugin
   await log("Tree plugin initialized", {
     configPath,
@@ -391,8 +554,8 @@ export const TreePlugin: Plugin = async ({ client }) => {
     },
 
     tool: {
-      "spawn-agent": tool({
-        description: "Spawn a new agent session in tmux with parent-child tracking",
+      "tree-spawn-child": tool({
+        description: "Spawn a new agent session in tmux/terminal with parent-child tracking",
         args: {
           agent_type: tool.schema.string().describe("Agent type (web, pipeline, db, research, test, general)"),
           task_description: tool.schema.string().describe("Task description for the agent"),
@@ -404,7 +567,7 @@ export const TreePlugin: Plugin = async ({ client }) => {
         }
       }),
 
-      "show-tree": tool({
+      "tree-show": tool({
         description: "Show the current session tree visualization",
         args: {},
         async execute() {
@@ -413,7 +576,7 @@ export const TreePlugin: Plugin = async ({ client }) => {
         }
       }),
 
-      "kill-session": tool({
+      "tree-truncate-children": tool({
         description: "Kill a session and optionally its children",
         args: {
           session_name: tool.schema.string().describe("Session/window name to kill"),
@@ -460,7 +623,7 @@ export const TreePlugin: Plugin = async ({ client }) => {
         }
       }),
 
-      "list-agents": tool({
+      "tree-list-agents": tool({
         description: "List available agent types and their descriptions",
         args: {},
         async execute() {
@@ -470,6 +633,29 @@ export const TreePlugin: Plugin = async ({ client }) => {
             .join("\n")
           
           return `Available agent types:\n\n${agents}`
+        }
+      }),
+
+      "tree-focus-parent": tool({
+        description: "Switch tmux focus to parent window (checks auto_focus_parent config)",
+        args: {},
+        async execute() {
+          config = await loadConfig()
+          const result = await focusParent()
+          return result.message
+        }
+      }),
+
+      "tree-report-parent": tool({
+        description: "Create a report file and notify parent window about completion",
+        args: {
+          report_content: tool.schema.string().describe("Content of the report in markdown format"),
+          report_name: tool.schema.string().describe("Name of the report file (without .md extension)")
+        },
+        async execute(args) {
+          config = await loadConfig()
+          const result = await reportToParent(args.report_content, args.report_name)
+          return result.message
         }
       })
     }
