@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 
 import { readFile, writeFile, mkdir, cp } from "fs/promises"
 import { existsSync } from "fs"
