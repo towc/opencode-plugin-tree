@@ -1,0 +1,43 @@
+{
+  "name": "opencode-plugin-tree",
+  "version": "1.0.0",
+  "description": "OpenCode plugin for managing tmux session trees with parent-child relationships",
+  "type": "module",
+  "main": "index.ts",
+  "author": "towc",
+  "license": "MIT",
+  "keywords": [
+    "opencode",
+    "plugin",
+    "tmux",
+    "session-management",
+    "tree",
+    "agent-coordination"
+  ],
+  "scripts": {
+    "install-plugin": "node cli/install",
+    "browse": "node cli/browse",
+    "tree": "node cli/tree"
+  },
+  "bin": {
+    "opencode-plugin-tree": "cli/main"
+  },
+  "dependencies": {
+    "@opencode-ai/plugin": "^1.0.0",
+    "js-yaml": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0"
+  },
+  "peerDependencies": {
+    "opencode": "^1.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/towc/opencode-plugin-tree.git"
+  },
+  "bugs": {
+    "url": "https://github.com/towc/opencode-plugin-tree/issues"
+  },
+  "homepage": "https://github.com/towc/opencode-plugin-tree#readme"
+}

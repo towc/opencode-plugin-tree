@@ -1,0 +1,138 @@
+# OpenCode Tree Plugin Configuration
+# Manages tmux session trees with parent-child relationships
+
+# Tmux configuration
+tmux:
+  # Default session name for root
+  root_session: "opencode-root"
+  
+  # Naming pattern for child sessions
+  # Available variables: {parent}, {agent}, {task}, {timestamp}
+  child_pattern: "{parent}-{agent}"
+  
+  # Window naming pattern
+  window_pattern: "{agent}-agent"
+
+# Agent types and their default configurations
+agents:
+  # Web development agent
+  web:
+    description: "Web UI, TypeScript, Next.js, React components"
+    color: "blue"
+    default_dir: "web"
+    
+  # Pipeline/backend agent
+  pipeline:
+    description: "Pipeline engine, data processing, AI calls"
+    color: "green"
+    default_dir: "pipeline"
+    
+  # Database agent
+  db:
+    description: "Database migrations, schema changes, queries"
+    color: "cyan"
+    default_dir: "pipeline"
+    
+  # Research/documentation agent
+  research:
+    description: "Document analysis, requirements gathering"
+    color: "yellow"
+    default_dir: "docs"
+    
+  # Testing agent
+  test:
+    description: "Testing, validation, QA"
+    color: "magenta"
+    default_dir: "."
+    
+  # General purpose agent
+  general:
+    description: "General-purpose tasks"
+    color: "white"
+    default_dir: "."
+
+# Session tracking
+tracking:
+  # File to store session tree state
+  state_file: "~/.config/opencode/plugins/tree/sessions.json"
+  
+  # File to track active sessions (project-specific)
+  active_sessions_file: "docs/active-sessions.md"
+  
+  # Auto-update active sessions file
+  auto_update: true
+  
+  # Track session metadata
+  metadata:
+    - created_at
+    - parent
+    - agent_type
+    - working_dir
+    - task_description
+
+# Session lifecycle events
+events:
+  # Event to fire when session is created
+  session_created:
+    log: true
+    notify: true
+    
+  # Event to fire when session is destroyed
+  session_destroyed:
+    log: true
+    notify: false
+    
+  # Event to fire when session becomes idle
+  session_idle:
+    log: false
+    notify: false
+
+# Auto-cleanup configuration
+cleanup:
+  # Auto-kill sessions that have been idle for X minutes
+  idle_timeout: 0  # 0 = disabled
+  
+  # Confirm before killing sessions
+  confirm_kill: true
+  
+  # Keep sessions in tree even after tmux window is closed
+  preserve_tree: true
+
+# Prompt templates
+templates:
+  # Standard agent prompt
+  agent_prompt: |
+    You are the {AGENT_TYPE} AGENT for {PROJECT_NAME}.
+    
+    PARENT INSTANCE: {PARENT_NAME}
+    
+    Read these files for context:
+    1. AGENTS.md - Multi-agent workflow protocol
+    2. docs/daily/{DATE}.md - Today's plan and progress
+    3. docs/active-sessions.md - Currently running agents (avoid duplicate work)
+    
+    Your tasks:
+    {TASKS}
+    
+    When COMPLETE:
+    - Create detailed report: docs/daily/{DATE}/{AGENT_TYPE}-{TASK_NAME}.md
+    - Tell user: "Report complete: <filename>. Parent: {PARENT_NAME}"
+    - User will update docs/active-sessions.md
+    
+    IMPORTANT RULES:
+    - Read architectural decision rules in AGENTS.md
+    - NEVER make architectural decisions without user approval
+    - Work within existing plan from docs/daily/{DATE}.md
+    - Check docs/active-sessions.md to avoid duplicate work
+    - Update progress in real-time
+
+# CLI behavior
+cli:
+  # Show tree visualization by default
+  show_tree_on_spawn: true
+  
+  # Confirm before spawning new sessions
+  confirm_spawn: false
+  
+  # Default editor for editing config
+  editor: "$EDITOR"
