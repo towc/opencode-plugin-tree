@@ -307,7 +307,7 @@ export const TreePlugin: Plugin = async ({ client }) => {
       TASK_NAME: taskDescription.split("\n")[0]?.replace(/[^a-z0-9]/gi, "-").toLowerCase() || "task"
     })
 
-    const command = `op "${prompt}"`
+    const command = `opencode --prompt "${prompt}"`
     let success = false
     
     if (config.spawn_mode === "tmux") {

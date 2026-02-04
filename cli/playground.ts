@@ -73,11 +73,11 @@ async function runPlayground(example) {
         
         // Send command that reads from file
         // Using $(<file) is more reliable than cat with command substitution
-        execSync(`tmux send-keys -t ":${windowName}" 'op "$(<.prompt)"'`)
+        execSync(`tmux send-keys -t ":${windowName}" 'opencode --prompt "$(<.prompt)"'`)
         
         console.log(`✅ Ready! Switch to window "${windowName}" and press Enter to start.`)
       } else {
-        execSync(`tmux send-keys -t ":${windowName}" 'op'`)
+        execSync(`tmux send-keys -t ":${windowName}" 'opencode --prompt'`)
         console.log(`✅ Ready! Switch to window "${windowName}" and start coding.`)
       }
     } else {
@@ -85,7 +85,7 @@ async function runPlayground(example) {
       console.log(`\n✅ Example copied to: ${targetDir}`)
       console.log(`\nNext steps:`)
       console.log(`  cd ${targetDir}`)
-      console.log(`  op`)
+      console.log(`  opencode --prompt`)
       
       if (prompt) {
         console.log(`\nSuggested prompt:`)
