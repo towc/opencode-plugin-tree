@@ -49,7 +49,7 @@ Then restart OpenCode.
 ## Requirements
 
 - OpenCode 1.0+
-- Bun (comes with OpenCode)
+- Node.js (comes with OpenCode)
 - tmux (for tmux mode) or a terminal emulator (for terminal mode)
 
 ## Quick Start: Playground
