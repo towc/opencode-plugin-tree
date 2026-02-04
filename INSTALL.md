@@ -25,7 +25,7 @@ bun --version
 
 ## Plugin Installation
 
-### Method 1: NPX (Recommended)
+### Method 1: NPX (Recommended - for published package)
 
 ```bash
 npx opencode-plugin-tree install
@@ -35,6 +35,22 @@ This will:
 1. Add the plugin to `~/.config/opencode/opencode.json`
 2. Create default config at `~/.config/opencode/plugins/tree/tree.yml`
 3. Auto-detect spawn mode (tmux vs terminal)
+
+Then restart OpenCode.
+
+### Method 1b: Local Development
+
+```bash
+cd /path/to/opencode-plugin-tree
+
+# Install dependencies
+bun install
+
+# Install plugin in dev mode
+npx . install --dev
+```
+
+This installs the plugin using the local directory path instead of npm package.
 
 Then restart OpenCode.
 
