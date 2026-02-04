@@ -67,12 +67,13 @@ async function runPlayground(example) {
       execSync('sleep 0.2')
       
       if (prompt) {
-        // Use printf to properly escape the prompt, then pass to op
-        // This avoids all shell interpretation issues
-        const base64Prompt = Buffer.from(prompt).toString('base64')
+        // Write prompt to file to avoid all escaping issues
+        const promptFile = join(targetDir, '.prompt')
+        await writeFile(promptFile, prompt)
         
-        // Send command that decodes base64 and passes to op
-        execSync(`tmux send-keys -t ":${windowName}" "op \\"\$(echo '${base64Prompt}' | base64 -d)\\""`)
+        // Send command that reads from file
+        // Using $(<file) is more reliable than cat with command substitution
+        execSync(`tmux send-keys -t ":${windowName}" 'op "$(<.prompt)"'`)
         
         console.log(`✅ Ready! Switch to window "${windowName}" and press Enter to start.`)
       } else {
