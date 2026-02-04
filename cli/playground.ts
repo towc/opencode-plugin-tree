@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 
-import { readFile, cp, mkdir } from "fs/promises"
+import { readFile, writeFile, cp, mkdir } from "fs/promises"
 import { existsSync } from "fs"
 import { dirname, join } from "path"
 import { fileURLToPath } from "url"
@@ -60,15 +60,23 @@ async function runPlayground(example) {
       const windowName = `playground-${example}`
       console.log(`🚀 Creating tmux window: ${windowName}`)
       
+      // Create window and leave it with a shell running
       execSync(`tmux new-window -n "${windowName}" -c "${targetDir}"`)
       
-      // Send the op command without pressing enter
+      // Wait for window to be fully ready
+      execSync('sleep 0.2')
+      
       if (prompt) {
-        const escapedPrompt = prompt.replace(/'/g, "'\\''")
-        execSync(`tmux send-keys -t "${windowName}" 'op "${escapedPrompt}"'`)
+        // Use printf to properly escape the prompt, then pass to op
+        // This avoids all shell interpretation issues
+        const base64Prompt = Buffer.from(prompt).toString('base64')
+        
+        // Send command that decodes base64 and passes to op
+        execSync(`tmux send-keys -t ":${windowName}" "op \\"\$(echo '${base64Prompt}' | base64 -d)\\""`)
+        
         console.log(`✅ Ready! Switch to window "${windowName}" and press Enter to start.`)
       } else {
-        execSync(`tmux send-keys -t "${windowName}" 'op'`)
+        execSync(`tmux send-keys -t ":${windowName}" 'op'`)
         console.log(`✅ Ready! Switch to window "${windowName}" and start coding.`)
       }
     } else {
