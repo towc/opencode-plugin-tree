@@ -11,6 +11,7 @@ Usage:
 
 Commands:
   install          Add plugin to OpenCode config
+  install --dev    Install from local directory (for development)
   uninstall        Remove plugin from OpenCode config
   playground       Try examples (bug-fix, build-app, refactor-code)
   tree             Show current session tree
@@ -20,14 +21,18 @@ Commands:
   help             Show this help message
 
 Examples:
-  # Install the plugin
+  # Install the plugin from npm
   npx opencode-plugin-tree install
+
+  # Install for local development
+  cd /path/to/opencode-plugin-tree
+  npx . install --dev
 
   # Show session tree
   npx opencode-plugin-tree tree
 
-  # Spawn a new agent
-  npx opencode-plugin-tree spawn web
+  # Try playground example
+  npx . playground bug-fix
 
   # Edit config
   npx opencode-plugin-tree config

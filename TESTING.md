@@ -16,7 +16,7 @@ Manual testing checklist for local development.
 #### 1.1 Fresh Install
 ```bash
 cd /path/to/opencode-plugin-tree
-npx . install
+npx . install --dev
 ```
 
 **Expected:**
@@ -33,7 +33,7 @@ cat ~/.config/opencode/plugins/tree/tree.yml | grep spawn_mode
 
 #### 1.2 Duplicate Install
 ```bash
-npx . install
+npx . install --dev
 ```
 
 **Expected:**
@@ -44,7 +44,7 @@ npx . install
 ```bash
 # Exit tmux first
 tmux detach
-npx . install
+npx . install --dev
 ```
 
 **Expected:**

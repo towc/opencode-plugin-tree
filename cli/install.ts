@@ -15,8 +15,16 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 const DEFAULT_CONFIG_PATH = join(__dirname, "..", "tree.default.yml")
 
+// Check for --dev flag
+const isDevMode = process.argv.includes("--dev")
+const pluginPath = isDevMode ? join(__dirname, "..") : "opencode-plugin-tree"
+
 async function install() {
-  console.log("📦 Installing opencode-plugin-tree...")
+  console.log(`📦 Installing opencode-plugin-tree${isDevMode ? " (dev mode)" : ""}...`)
+  
+  if (isDevMode) {
+    console.log(`📁 Using local path: ${pluginPath}`)
+  }
   
   // Detect if in tmux
   const inTmux = !!process.env.TMUX
@@ -45,16 +53,36 @@ async function install() {
       config.plugin = []
     }
 
-    // Check if already installed
-    if (config.plugin.includes("opencode-plugin-tree")) {
+    // Check if already installed (check both package name and file path)
+    const alreadyInstalled = config.plugin.some((p: string) => 
+      p === "opencode-plugin-tree" || p === pluginPath || p.endsWith("/opencode-plugin-tree")
+    )
+    
+    if (alreadyInstalled) {
       console.log("✅ Plugin already installed!")
+      
+      // If switching between dev and non-dev, update the path
+      if (isDevMode && !config.plugin.includes(pluginPath)) {
+        config.plugin = config.plugin.filter((p: string) => p !== "opencode-plugin-tree")
+        config.plugin.push(pluginPath)
+        await writeFile(CONFIG_PATH, JSON.stringify(config, null, 2))
+        console.log("✅ Updated to use local dev path")
+      } else if (!isDevMode && !config.plugin.includes("opencode-plugin-tree")) {
+        config.plugin = config.plugin.filter((p: string) => !p.includes("opencode-plugin-tree") || p === "opencode-plugin-tree")
+        if (!config.plugin.includes("opencode-plugin-tree")) {
+          config.plugin.push("opencode-plugin-tree")
+        }
+        await writeFile(CONFIG_PATH, JSON.stringify(config, null, 2))
+        console.log("✅ Updated to use npm package")
+      }
+      
       console.log("\nRestart OpenCode to apply changes:")
       console.log("  Ctrl+C (in OpenCode) then restart")
       process.exit(0)
     }
 
     // Add plugin
-    config.plugin.push("opencode-plugin-tree")
+    config.plugin.push(pluginPath)
 
     // Write back to file
     await writeFile(CONFIG_PATH, JSON.stringify(config, null, 2))
